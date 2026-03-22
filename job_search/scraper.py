@@ -174,12 +174,12 @@ def fetch_all_jobs() -> list[dict]:
             )
 
             try:
-                # goto() loads the page; "networkidle" waits until no network
+                # goto() loads the page; "networdomcontentloadedkidle" waits until no network
                 # requests have fired for 500ms — i.e. JS has finished loading.
-                page.goto(url, wait_until="networkidle", timeout=30_000)
+                page.goto(url, wait_until="domcontentloaded", timeout=30_000)
 
                 # Extra wait for any lazy-loaded job cards to appear
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(4000)
 
             except PlaywrightTimeout:
                 log.warning(f"  Timeout loading page for '{keyword}' — skipping")
