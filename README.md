@@ -1,4 +1,4 @@
-# Sports IT Job Monitor
+# IT Job Monitor
 
 Monitors **TeamWork Online** for DevOps, SysAdmin, IT Manager, and related roles
 at MLB, NBA, NFL, and NHL teams. Runs on a cron job and emails a weekly summary
