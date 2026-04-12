@@ -37,7 +37,7 @@ US_STATES = {
     "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
     "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
     "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
-    "DC", "PR", "GU", "VI",   # territories
+    "DC", "PR", "GU", "VI",
 }
 
 US_STATE_NAMES = {
@@ -53,7 +53,7 @@ US_STATE_NAMES = {
     "west virginia", "wisconsin", "wyoming", "district of columbia",
 }
 
-# Well-known US cities — covers most of what you'll see in job listings
+# Well-known US cities
 US_CITIES = {
     "new york", "los angeles", "chicago", "houston", "phoenix",
     "philadelphia", "san antonio", "san diego", "dallas", "san jose",
@@ -201,45 +201,44 @@ def classify_location(location: str, is_remote: bool = False) -> str | None:
 
     loc_lower = location.lower().strip()
 
-    # Step 1: Check filtered countries first — hard exclude
+    # Check filtered countries first — hard exclude
     if any(indicator in loc_lower for indicator in FILTERED_COUNTRIES):
         return None     # caller should drop this job
 
-    # Step 2: Canada
+    # Canada
     if any(indicator in loc_lower for indicator in CANADA_INDICATORS):
         return "~ Canada"
 
-    # Step 3: Mexico
+    # Mexico
     if any(indicator in loc_lower for indicator in MEXICO_INDICATORS):
         return "~ Mexico"
 
-    # Step 4: Remote
+    # Remote
     if is_remote or any(w in loc_lower for w in ["remote", "work from home", "wfh"]):
         return "~ Remote"
 
-    # Step 5: US state abbreviation — look for ", XX" pattern (e.g. "Dallas, TX")
+    # US state abbreviation — look for ", XX" pattern (e.g. "Dallas, TX")
     state_match = re.search(r'\b([A-Z]{2})\b', location)
     if state_match and state_match.group(1) in US_STATES:
         return "✓ US"
 
-    # Step 6: US state name
+    # US state name
     if any(state in loc_lower for state in US_STATE_NAMES):
         return "✓ US"
 
-    # Step 7: US city name
+    # US city name
     if any(city in loc_lower for city in US_CITIES):
         return "✓ US"
 
-    # Step 8: Workday "N Locations" or "Multiple Locations" — assume US
+    # Workday "N Locations" or "Multiple Locations" — assume US
     if re.search(r'\d+\s+location', loc_lower) or "multiple" in loc_lower:
         return "✓ US"
 
-    # Step 9: Explicitly stated USA
+    # Explicitly stated USA
     if any(x in loc_lower for x in ["usa", "united states", "u.s.", "u.s.a"]):
         return "✓ US"
 
-    # Default: assume US — better to show a mislabeled foreign job than
-    # silently drop a real domestic opportunity
+    # Default: assume US — better to show a mislabeled foreign job than silently drop a real domestic opportunity
     return "✓ US"
 
 

@@ -3,14 +3,6 @@ workday.py
 ==========
 Fetches IT/DevOps job listings from Workday career portals using Playwright.
 
-WHY PLAYWRIGHT FOR WORKDAY?
-  Workday renders job listings entirely via JavaScript. A plain requests.get()
-  returns an empty shell. Playwright launches headless Chromium, waits for the
-  jobs to render, then hands the HTML to BeautifulSoup for parsing.
-
-  This is the same approach as scraper.py for TeamWork Online — the only
-  difference is the URL pattern and CSS selectors for Workday's UI.
-
 HOW WORKDAY SEARCH URLS WORK:
   Every Workday career site follows this pattern:
     https://{tenant}.wd{N}.myworkdayjobs.com/en-US/{board}/jobs?q={keyword}

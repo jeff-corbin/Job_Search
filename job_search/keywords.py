@@ -3,13 +3,8 @@ keywords.py
 ===========
 Shared keyword matching logic used by every source module.
 
-WHY A SEPARATE MODULE?
-  The matching logic was duplicated across scraper.py, greenhouse.py,
-  and workday.py. Centralizing it means fixing a bug once fixes it
-  everywhere, and adding a new keyword list takes one line in config.py.
-
 HOW MATCHING WORKS:
-  We use word-boundary matching (\\b in regex) so that:
+  By using word-boundary matching (\\b in regex):
     "it manager"  matches  "IT Manager" or "Senior IT Manager"
     "it manager"  does NOT match "credit manager" or "digital"
     "uem"         matches  "UEM Administrator"
@@ -90,11 +85,6 @@ def is_relevant(title: str, description: str = "") -> bool:
       2. If title matches any TITLE_KEYWORDS phrase → True
       3. If description matches any DESCRIPTION_KEYWORDS phrase → True
       4. Otherwise → False
-
-    The description check (rule 3) catches generic titles like
-    "Staff Engineer" or "Senior Engineer" that mention Intune/SCCM/etc.
-    in the job description — roles that are really in your wheelhouse
-    even though the title doesn't say so explicitly.
 
     Args:
         title:       The job title string
