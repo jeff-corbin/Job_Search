@@ -295,6 +295,11 @@ TITLE_EXCLUDE: list[str] = [
     "entry level",
     "junior",
     "analyst",
+    "vice president",
+    "director",
+    "account executive",
+    "sales manager",
+    "Corporate Counsel",
 ]
 
 # ---------------------------------------------------------------------------
