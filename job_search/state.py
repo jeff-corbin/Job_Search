@@ -9,7 +9,6 @@ Handles old format (plain list) automatically for backward compat.
 
 import json
 import logging
-from pathlib import Path
 
 from config import STATE_FILE
 
