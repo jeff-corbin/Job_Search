@@ -339,6 +339,12 @@ GREENHOUSE_COMPANIES: list[dict] = [
     {"label": "Okta",      "token": "okta"},
     {"label": "Datadog",   "token": "datadog"},
     {"label": "PagerDuty", "token": "pagerduty"},
+    {"label": "Netflix",    "token": "netflix"},
+    {"label": "Spotify",    "token": "spotify"},
+    {"label": "Stripe",     "token": "stripe"},
+    {"label": "Cloudflare", "token": "cloudflare"},
+    {"label": "Figma",      "token": "figma"},
+    {"label": "Notion",     "token": "notion"},
     # {"label": "Company Name", "token": "companytoken"},
 ]
 
