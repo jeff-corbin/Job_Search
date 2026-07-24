@@ -1,7 +1,7 @@
 """
 config.py
 =========
-All constants and config for the project. Every other module imports from here.
+All constants and config for the project. Every other module imports from this file.
 
 Secrets (GEMINI_API_KEY, EMAIL_PASSWORD) come from Vault at runtime.
 Bootstrap vars (VAULT_*, EMAIL_TO, EMAIL_FROM) come from .env.
