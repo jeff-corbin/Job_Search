@@ -1,7 +1,7 @@
 """
 main.py
 =======
-Runs the full pipeline
+Runs the full job-search pipeline
 
 Pipeline:
   1. Load seen IDs

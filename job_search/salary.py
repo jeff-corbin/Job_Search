@@ -2,26 +2,7 @@
 salary.py
 =========
 Salary extraction and AI estimation via Gemini.
-Thresholds live in config.py — change them there.
-
-BATCHING (added 2026-07-25):
-  Gemini estimation used to be one API call per job (enrich_one_job()),
-  which is what was hitting rate limits. The flow is now split in two:
-
-    1. try_salary_from_page(job)        — per-job, just an HTTP GET to
-                                           the job's own listing page.
-                                           Not rate-limited by Gemini at
-                                           all, stays as-is.
-    2. estimate_salaries_batch(jobs)    — for whatever's left after step
-                                           1 comes up empty, batches many
-                                           jobs into ONE Gemini call per
-                                           chunk (GEMINI_BATCH_SIZE jobs
-                                           per call, default 50) instead
-                                           of one call per job.
-
-  enrich_one_job() (the original single-job, page-then-Gemini function)
-  is kept as-is for any single-job/manual use — main.py no longer calls
-  it directly, but nothing else changes about how it works.
+Thresholds live in config.py.
 """
 
 import re
@@ -175,7 +156,7 @@ def try_salary_from_page(job: dict) -> bool:
     return True
 
 # ---------------------------------------------------------------------------
-# GEMINI ESTIMATION — single job (deprecated, but kept for manual/one-off use)
+# GEMINI ESTIMATION — single job (kept for manual/one-off use)
 # ---------------------------------------------------------------------------
 
 _gemini_rate_limit_until: float = 0.0
@@ -263,7 +244,7 @@ def enrich_one_job(job: dict) -> None:
     log.info(f"    {job.get('salary', 'N/A')}  [{job['salary_band']}]")
 
 # ---------------------------------------------------------------------------
-# GEMINI ESTIMATION — batched (production as of 2026-Jul-25)
+# GEMINI ESTIMATION — batched (main.py uses this)
 # ---------------------------------------------------------------------------
 
 def _build_batch_prompt(chunk: list[dict]) -> str:
