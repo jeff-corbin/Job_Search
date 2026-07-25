@@ -61,6 +61,7 @@ STATE_FILE: Path = Path(os.getenv("STATE_FILE", "seen_jobs.json"))
 
 SALARY_STRONG_MIN:  int = 140_000   # low end must be >= this for "Strong"
 SALARY_REVIEW_AVG:  int = 125_000   # avg must be >= this for "Review"
+GEMINI_BATCH_SIZE:  int = 50        # count of jobs to send at 1x for Gemini to estimate
 # Anything below SALARY_REVIEW_AVG average = "Low" — filtered out of email
 
 # ---------------------------------------------------------------------------
