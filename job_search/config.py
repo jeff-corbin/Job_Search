@@ -328,7 +328,6 @@ SEARCH_KEYWORDS: list[str] = [
 
 # ---------------------------------------------------------------------------
 # GREENHOUSE COMPANIES
-# Free public JSON API — no key needed.
 # Find a token: go to a company's careers page → click any job →
 # look for "greenhouse.io/TOKEN" in the URL.
 # Verify: https://boards-api.greenhouse.io/v1/boards/TOKEN/jobs
@@ -339,12 +338,9 @@ GREENHOUSE_COMPANIES: list[dict] = [
     {"label": "Okta",       "token": "okta"},
     {"label": "Datadog",    "token": "datadog"},
     {"label": "PagerDuty",  "token": "pagerduty"},
-    {"label": "Netflix",    "token": "netflix"},
-    {"label": "Spotify",    "token": "spotify"},
     {"label": "Stripe",     "token": "stripe"},
     {"label": "Cloudflare", "token": "cloudflare"},
     {"label": "Figma",      "token": "figma"},
-    {"label": "Notion",     "token": "notion"},
     # {"label": "Company Name", "token": "companytoken"},
 ]
 
@@ -432,3 +428,15 @@ WORKDAY_COMPANIES: list[dict] = [
     #     "domain": "https://TENANT.wd1.myworkdayjobs.com",
     # },
 ]
+
+# ---------------------------------------------------------------------------
+# COMPANY SPECIFIC VARIABLES
+# Specific sites, constraints, and misc things for highly-desirable employers
+# 
+# ---------------------------------------------------------------------------
+
+NETFLIX_CAREERS_URL: str = "https://explore.jobs.netflix.net/careers"
+NETFLIX_DOMAIN:      str = "netflix.com"
+NETFLIX_API_URL:     str = "https://explore.jobs.netflix.net/api/apply/v2/jobs"
+NETFLIX_PAGE_SIZE:   int = 10
+NETFLIX_MAX_PAGES:   int = 80
