@@ -20,6 +20,7 @@ from location   import enrich_locations
 from state      import load_state, save_state
 from salary     import enrich_one_job
 from emailer    import send_report
+from netflix    import fetch_netflix_jobs
 
 log = logging.getLogger(__name__)
 
@@ -60,6 +61,9 @@ def run() -> None:
 
     log.info("Workday")
     _process_source("Workday", fetch_workday_jobs(), seen_ids, all_jobs)
+
+    log.info("Netflix")
+    _process_source("Netflix", fetch_netflix_jobs(), seen_ids, all_jobs)
 
     log.info(f"Step 1 complete: {len(all_jobs)} new job(s)")
 

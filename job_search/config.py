@@ -1,7 +1,7 @@
 """
 config.py
 =========
-All constants and config for the project. Every other module imports from here.
+All constants and config for the project. Every other module imports from this file.
 
 Secrets (GEMINI_API_KEY, EMAIL_PASSWORD) come from Vault at runtime.
 Bootstrap vars (VAULT_*, EMAIL_TO, EMAIL_FROM) come from .env.
@@ -328,17 +328,19 @@ SEARCH_KEYWORDS: list[str] = [
 
 # ---------------------------------------------------------------------------
 # GREENHOUSE COMPANIES
-# Free public JSON API — no key needed.
 # Find a token: go to a company's careers page → click any job →
 # look for "greenhouse.io/TOKEN" in the URL.
 # Verify: https://boards-api.greenhouse.io/v1/boards/TOKEN/jobs
 # ---------------------------------------------------------------------------
 
 GREENHOUSE_COMPANIES: list[dict] = [
-    {"label": "Trace3",    "token": "trace3"},
-    {"label": "Okta",      "token": "okta"},
-    {"label": "Datadog",   "token": "datadog"},
-    {"label": "PagerDuty", "token": "pagerduty"},
+    {"label": "Trace3",     "token": "trace3"},
+    {"label": "Okta",       "token": "okta"},
+    {"label": "Datadog",    "token": "datadog"},
+    {"label": "PagerDuty",  "token": "pagerduty"},
+    {"label": "Stripe",     "token": "stripe"},
+    {"label": "Cloudflare", "token": "cloudflare"},
+    {"label": "Figma",      "token": "figma"},
     # {"label": "Company Name", "token": "companytoken"},
 ]
 
@@ -426,3 +428,15 @@ WORKDAY_COMPANIES: list[dict] = [
     #     "domain": "https://TENANT.wd1.myworkdayjobs.com",
     # },
 ]
+
+# ---------------------------------------------------------------------------
+# COMPANY SPECIFIC VARIABLES
+# Specific sites, constraints, and misc things for highly-desirable employers
+# 
+# ---------------------------------------------------------------------------
+
+NETFLIX_CAREERS_URL: str = "https://explore.jobs.netflix.net/careers"
+NETFLIX_DOMAIN:      str = "netflix.com"
+NETFLIX_API_URL:     str = "https://explore.jobs.netflix.net/api/apply/v2/jobs"
+NETFLIX_PAGE_SIZE:   int = 10
+NETFLIX_MAX_PAGES:   int = 80
