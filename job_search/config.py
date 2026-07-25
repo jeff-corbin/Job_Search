@@ -53,6 +53,7 @@ SMTP_PORT:  int = int(os.getenv("SMTP_PORT", "587"))
 # ---------------------------------------------------------------------------
 
 STATE_FILE: Path = Path(os.getenv("STATE_FILE", "seen_jobs.json"))
+GEMINI_BATCH_SIZE: int = 50
 
 # ---------------------------------------------------------------------------
 # SALARY THRESHOLDS
