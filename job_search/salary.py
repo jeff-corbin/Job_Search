@@ -2,17 +2,18 @@
 salary.py
 =========
 Salary extraction and AI estimation via Gemini.
-Thresholds live in config.py — change them there.
+Batch count lives in config.py.
 """
 
 import re
+import json
 import time
 import logging
 
 import requests  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
 
-from config import GEMINI_API_KEY, SALARY_STRONG_MIN, SALARY_REVIEW_AVG
+from config import GEMINI_API_KEY, SALARY_STRONG_MIN, SALARY_REVIEW_AVG, GEMINI_BATCH_SIZE
 
 log = logging.getLogger(__name__)
 
@@ -128,15 +129,42 @@ def _fetch_salary_from_page(url: str, job: dict | None = None) -> tuple[str | No
         log.debug(f"  Detail page fetch failed {url}: {e}")
         return None, None, None
 
+
+def try_salary_from_page(job: dict) -> bool:
+    """
+    Attempt to find a listed salary on the job's own detail page.
+    On success, sets salary/salary_estimated/salary_low/salary_high/
+    salary_band on the job dict and returns True.
+    On failure, stashes description_text (if any) for later Gemini
+    batching and returns False — caller is responsible for running the
+    job through estimate_salaries_batch() afterward.
+    """
+    title = job.get("title", "Unknown")
+    log.info(f"  Checking page for salary: {title} @ {job.get('organization', '')}")
+
+    display, low, high = _fetch_salary_from_page(job.get("url", ""), job)
+
+    if not display:
+        return False
+
+    log.info(f"    Found on page: {display}")
+    job["salary"]           = display
+    job["salary_estimated"] = False
+    job["salary_low"]       = low
+    job["salary_high"]      = high
+    job["salary_band"]      = evaluate_salary_band(low, high)
+    return True
+
 # ---------------------------------------------------------------------------
-# GEMINI ESTIMATION
+# GEMINI ESTIMATION — single job
+# This is the original code; kept for posterity and any one-offs
 # ---------------------------------------------------------------------------
 
 _gemini_rate_limit_until: float = 0.0
 
 
 def _estimate_with_gemini(job: dict) -> str:
-    """Ask Gemini to estimate salary. Handles 429 rate limits with a single retry."""
+    """Ask Gemini to estimate salary for ONE job. Handles 429 with a single retry."""
     global _gemini_rate_limit_until
 
     from google import genai
@@ -187,40 +215,183 @@ def _estimate_with_gemini(job: dict) -> str:
         log.warning(f"  Gemini error for '{job['title']}': {e}")
         return "Estimation unavailable"
 
-# ---------------------------------------------------------------------------
-# PUBLIC FUNCTION
-# ---------------------------------------------------------------------------
 
 def enrich_one_job(job: dict) -> None:
     """
-    Adds salary fields to job dict in place.
+    Adds salary fields to job dict in place, ONE job at a time.
     Tries the detail page first, falls back to Gemini.
-    No caching — always does a fresh lookup.
+
+    Kept for single-job/manual use. main.py uses the batched path
+    (try_salary_from_page() + estimate_salaries_batch()) instead, to
+    avoid one-Gemini-call-per-job rate limiting.
 
     Adds: salary, salary_estimated, salary_low, salary_high, salary_band
     """
-    title = job.get("title", "Unknown")
-    log.info(f"  Enriching: {title} @ {job.get('organization', '')}")
+    if try_salary_from_page(job):
+        return
 
-    display, low, high = _fetch_salary_from_page(job.get("url", ""), job)
-
-    if display:
-        log.info(f"    Found on page: {display}")
-        job["salary"]           = display
-        job["salary_estimated"] = False
-        job["salary_low"]       = low
-        job["salary_high"]      = high
+    if GEMINI_API_KEY:
+        log.info("    Not on page — asking Gemini...")
+        estimated = _estimate_with_gemini(job)
     else:
-        if GEMINI_API_KEY:
-            log.info("    Not on page — asking Gemini...")
-            estimated = _estimate_with_gemini(job)
+        estimated = "Not available (GEMINI_API_KEY not set)"
+
+    job["salary"]           = estimated
+    job["salary_estimated"] = True
+    _, low, high            = parse_salary_from_text(estimated)
+    job["salary_low"]       = low
+    job["salary_high"]      = high
+    job["salary_band"]      = evaluate_salary_band(low, high)
+    log.info(f"    {job.get('salary', 'N/A')}  [{job['salary_band']}]")
+
+# ---------------------------------------------------------------------------
+# GEMINI ESTIMATION — batched
+# Production function as of 2026-Jul-25
+# ---------------------------------------------------------------------------
+
+def _build_batch_prompt(chunk: list[dict]) -> str:
+    """Build one prompt covering many jobs, asking for a JSON array matched by index."""
+    job_entries = []
+    for i, job in enumerate(chunk):
+        desc = (job.get("description_text", "") or "")[:500]
+        if len(job.get("description_text", "") or "") > 500:
+            desc += "..."
+        job_entries.append({
+            "index":               i,
+            "title":               job.get("title", ""),
+            "organization":        job.get("organization", ""),
+            "location":            job.get("location", ""),
+            "remote":              bool(job.get("remote")),
+            "description_excerpt": desc,
+        })
+
+    jobs_json = json.dumps(job_entries, indent=2)
+
+    return (
+        "You are a compensation data expert. For EACH job in the JSON array below, "
+        "estimate its annual base salary range.\n\n"
+        "Reply with ONLY a JSON array, one object per job, in exactly this shape:\n"
+        '[{"index": 0, "salary": "$120,000 - $160,000"}, {"index": 1, "salary": "$95,000 - $130,000"}]\n\n'
+        "Rules:\n"
+        "- No explanation, no markdown code fences, no extra keys — just the JSON array.\n"
+        "- Every job below must have exactly one corresponding object in your output, matched by \"index\".\n"
+        "- \"salary\" must always be a plain dollar-range string, never null or a caveat.\n\n"
+        f"Jobs:\n{jobs_json}"
+    )
+
+
+def _parse_batch_response(text: str, expected: int) -> dict[int, str]:
+    """Parse Gemini's JSON array response into {index: salary_string}."""
+    cleaned = text.strip()
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        log.warning(f"  Could not parse Gemini batch JSON: {e}")
+        return {}
+
+    if not isinstance(parsed, list):
+        log.warning("  Gemini batch response was not a JSON array")
+        return {}
+
+    results: dict[int, str] = {}
+    for entry in parsed:
+        if not isinstance(entry, dict):
+            continue
+        idx    = entry.get("index")
+        salary = entry.get("salary")
+        if isinstance(idx, int) and isinstance(salary, str):
+            results[idx] = salary
+
+    if len(results) != expected:
+        log.warning(f"  Gemini batch returned {len(results)} of {expected} expected entries")
+
+    return results
+
+
+def _estimate_batch_with_gemini(chunk: list[dict]) -> None:
+    """One Gemini call for a whole chunk of jobs. Mutates each job dict in place."""
+    global _gemini_rate_limit_until
+
+    from google import genai
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
+    prompt = _build_batch_prompt(chunk)
+
+    wait = _gemini_rate_limit_until - time.time()
+    if wait > 0:
+        log.info(f"  Gemini rate limit — waiting {wait:.0f}s...")
+        time.sleep(wait + 1)
+
+    response_text: str | None = None
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite-preview",
+            contents=prompt,
+        )
+        response_text = response.text
+    except Exception as e:
+        err = str(e).lower()
+        if "429" in err or "quota" in err or "rate" in err:
+            _gemini_rate_limit_until = time.time() + 65
+            log.warning("  Gemini rate limit hit on batch — retrying once in 65s")
+            time.sleep(65)
+            try:
+                response = client.models.generate_content(
+                    model="gemini-3.1-flash-lite-preview",
+                    contents=prompt,
+                )
+                _gemini_rate_limit_until = 0.0
+                response_text = response.text
+            except Exception as e2:
+                log.warning(f"  Gemini batch retry failed: {e2}")
         else:
-            estimated = "Not available (GEMINI_API_KEY not set)"
+            log.warning(f"  Gemini batch error: {e}")
+
+    results_by_index = _parse_batch_response(response_text, len(chunk)) if response_text else {}
+
+    for i, job in enumerate(chunk):
+        estimated = results_by_index.get(i, "Estimation unavailable")
         job["salary"]           = estimated
         job["salary_estimated"] = True
         _, low, high            = parse_salary_from_text(estimated)
         job["salary_low"]       = low
         job["salary_high"]      = high
+        job["salary_band"]      = evaluate_salary_band(low, high)
+        log.info(f"    {job.get('title', '')}: {estimated}  [{job['salary_band']}]")
 
-    job["salary_band"] = evaluate_salary_band(job.get("salary_low"), job.get("salary_high"))
-    log.info(f"    {job.get('salary', 'N/A')}  [{job['salary_band']}]")
+
+def estimate_salaries_batch(jobs: list[dict], batch_size: int = GEMINI_BATCH_SIZE) -> None:
+    """
+    Estimate salaries for many jobs at once via Gemini, chunked into
+    batches of `batch_size` (default from config.GEMINI_BATCH_SIZE) —
+    one API call per chunk instead of one call per job.
+
+    Only pass jobs that already went through try_salary_from_page() and
+    came up empty — this is purely the Gemini-fallback step. Mutates
+    each job dict in place: salary, salary_estimated, salary_low,
+    salary_high, salary_band.
+    """
+    if not jobs:
+        return
+
+    if not GEMINI_API_KEY:
+        for job in jobs:
+            job["salary"]           = "Not available (GEMINI_API_KEY not set)"
+            job["salary_estimated"] = True
+            job["salary_low"]       = None
+            job["salary_high"]      = None
+            job["salary_band"]      = evaluate_salary_band(None, None)
+        return
+
+    total = len(jobs)
+    for start in range(0, total, batch_size):
+        chunk = jobs[start:start + batch_size]
+        log.info(f"  Gemini batch: estimating {len(chunk)} job(s) "
+                 f"({start + 1}-{start + len(chunk)} of {total})")
+        _estimate_batch_with_gemini(chunk)
+
+        if start + batch_size < total:
+            time.sleep(2)  # polite pause between batches
