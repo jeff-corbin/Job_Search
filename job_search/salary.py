@@ -2,7 +2,7 @@
 salary.py
 =========
 Salary extraction and AI estimation via Gemini.
-Thresholds live in config.py.
+Batch count lives in config.py.
 """
 
 import re
@@ -156,7 +156,8 @@ def try_salary_from_page(job: dict) -> bool:
     return True
 
 # ---------------------------------------------------------------------------
-# GEMINI ESTIMATION — single job (kept for manual/one-off use)
+# GEMINI ESTIMATION — single job
+# This is the original code; kept for posterity and any one-offs
 # ---------------------------------------------------------------------------
 
 _gemini_rate_limit_until: float = 0.0
@@ -244,7 +245,8 @@ def enrich_one_job(job: dict) -> None:
     log.info(f"    {job.get('salary', 'N/A')}  [{job['salary_band']}]")
 
 # ---------------------------------------------------------------------------
-# GEMINI ESTIMATION — batched (main.py uses this)
+# GEMINI ESTIMATION — batched
+# Production function as of 2026-Jul-25
 # ---------------------------------------------------------------------------
 
 def _build_batch_prompt(chunk: list[dict]) -> str:

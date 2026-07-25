@@ -7,8 +7,7 @@ Pipeline:
   1. Load seen IDs
   2. Fetch all sources, dedupe against seen IDs
   3. Enrich salary: try each job's own page first, then batch whatever's
-     left through Gemini in chunks (instead of one Gemini call per job —
-     see salary.py's BATCHING note)
+     left through Gemini in chunks
   4. Filter non-US/CA/MX locations
   5. Send email (Low salary jobs excluded from display, still tracked)
   6. Save updated seen IDs
